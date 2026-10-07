@@ -58,13 +58,15 @@ public class InventoryServiceImpl implements InventoryService {
             throw new InsufficientStockException(sku, quantity, availableUnits);
         }
 
-        Reservation reservation = new Reservation(orderId, sku, quantity, Instant.MAX);
+        Instant expiresAt = clock.instant().plus(CategoryPolicy.reservationDuration(product.getCategory()));
+        Reservation reservation = new Reservation(orderId, sku, quantity, expiresAt);
         reservations.put(orderId, reservation);
         return reservation;
     }
 
     @Override
     public void confirm(String orderId) {
+        removeExpiredReservations();
         Reservation reservation = reservations.remove(orderId);
         if (reservation == null) {
             throw new IllegalStateException("No active reservation for order: " + orderId);
@@ -76,6 +78,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public int available(String sku) {
+        removeExpiredReservations();
         Product product = products.get(sku);
         if (product == null) {
             return 0;
@@ -86,5 +89,10 @@ public class InventoryServiceImpl implements InventoryService {
                 .mapToInt(Reservation::quantity)
                 .sum();
         return product.getStock() - reservedUnits;
+    }
+
+    private void removeExpiredReservations() {
+        Instant now = clock.instant();
+        reservations.values().removeIf(reservation -> !reservation.expiresAt().isAfter(now));
     }
 }
