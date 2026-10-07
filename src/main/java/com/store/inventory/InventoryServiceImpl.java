@@ -20,12 +20,12 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public void registerProduct(String sku, ProductCategory category) {
+    public synchronized void registerProduct(String sku, ProductCategory category) {
         products.put(sku, new Product(sku, category, 0));
     }
 
     @Override
-    public void addStock(String sku, int quantity) {
+    public synchronized void addStock(String sku, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
@@ -39,7 +39,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public Reservation reserve(String orderId, String sku, int quantity) {
+    public synchronized Reservation reserve(String orderId, String sku, int quantity) {
         removeExpiredReservations();
         Reservation existingReservation = reservations.get(orderId);
         if (existingReservation != null) {
@@ -78,7 +78,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public void confirm(String orderId) {
+    public synchronized void confirm(String orderId) {
         removeExpiredReservations();
         Reservation reservation = reservations.remove(orderId);
         if (reservation == null) {
@@ -90,7 +90,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public int available(String sku) {
+    public synchronized int available(String sku) {
         removeExpiredReservations();
         Product product = products.get(sku);
         if (product == null) {

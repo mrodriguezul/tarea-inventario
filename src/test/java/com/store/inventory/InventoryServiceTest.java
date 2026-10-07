@@ -10,6 +10,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -233,5 +237,42 @@ class InventoryServiceTest {
         service.reserve("ORDER-2", "SKU-1", 5);
 
         assertEquals(1, alerts.size());
+    }
+
+    @Test
+    void concurrentReservationsShouldNeverOversell() throws Exception {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        int numberOfRequests = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        CountDownLatch startGate = new CountDownLatch(1);
+        List<Future<Boolean>> futures = new ArrayList<>();
+
+        for (int i = 0; i < numberOfRequests; i++) {
+            String orderId = "ORDER-" + i;
+
+            futures.add(executor.submit(() -> {
+                startGate.await();
+                try {
+                    service.reserve(orderId, "SKU-1", 1);
+                    return true;
+                } catch (InsufficientStockException e) {
+                    return false;
+                }
+            }));
+        }
+        startGate.countDown();
+
+        int successfulReservations = 0;
+        for (Future<Boolean> future : futures) {
+            if (future.get()) {
+                successfulReservations++;
+            }
+        }
+        executor.shutdown();
+
+        assertEquals(10, successfulReservations);
+        assertEquals(0, service.available("SKU-1"));
     }
 }
