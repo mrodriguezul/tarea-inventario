@@ -8,6 +8,8 @@ import com.store.inventory.api.*;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -158,5 +160,78 @@ class InventoryServiceTest {
         service.registerProduct("SKU-1", ProductCategory.STANDARD);
 
         assertThrows(IllegalArgumentException.class, () -> service.addStock("SKU-1", -1));
+    }
+
+    @Test
+    void shouldSendLowStockAlertWhenAvailableStockReachesFive() {
+        List<String> alerts = new ArrayList<>();
+
+        InventoryService service = Inventory.create(
+                clock,
+                (sku, available) -> alerts.add(sku + ":" + available)
+        );
+
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        service.reserve("ORDER-1", "SKU-1", 5);
+
+        assertEquals(1, alerts.size());
+        assertEquals("SKU-1:5", alerts.get(0));
+    }
+
+    @Test
+    void shouldNotRepeatLowStockAlertBeforeRestock() {
+        List<String> alerts = new ArrayList<>();
+
+        InventoryService service = Inventory.create(clock, (sku, available) -> alerts.add(sku + ":" + available));
+
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        service.reserve("ORDER-1", "SKU-1", 5);
+        service.reserve("ORDER-2", "SKU-1", 1);
+        service.reserve("ORDER-3", "SKU-1", 1);
+
+        assertEquals(1, alerts.size());
+    }
+
+    @Test
+    void shouldAllowNewLowStockAlertAfterRestock() {
+        List<String> alerts = new ArrayList<>();
+
+        InventoryService service = Inventory.create(clock, (sku, available) -> alerts.add(sku + ":" + available));
+
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+        service.reserve("ORDER-1", "SKU-1", 5);
+
+        assertEquals(1, alerts.size());
+
+        service.addStock("SKU-1", 10);
+        service.reserve("ORDER-2", "SKU-1", 10);
+
+        assertEquals(2, alerts.size());
+    }
+
+    @Test
+    void expirationShouldNotRearmLowStockAlert() {
+        List<String> alerts = new ArrayList<>();
+
+        InventoryService service = Inventory.create(clock, (sku, available) -> alerts.add(sku + ":" + available));
+
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+        service.reserve("ORDER-1", "SKU-1", 5);
+
+        assertEquals(1, alerts.size());
+
+        clock.advance(Duration.ofMinutes(16));
+
+        assertEquals(10, service.available("SKU-1"));
+
+        service.reserve("ORDER-2", "SKU-1", 5);
+
+        assertEquals(1, alerts.size());
     }
 }

@@ -6,6 +6,7 @@ final class Product {
     private final String sku;
     private final ProductCategory category;
     private int stock;
+    private boolean lowStockAlertSent;
 
     public Product(String sku, ProductCategory category, int stock) {
         this.sku = sku;
@@ -27,10 +28,19 @@ final class Product {
 
     public void addStock(int quantity) {
         this.stock += quantity;
+        this.lowStockAlertSent = false;
     }
 
     public void removeStock(int quantity) {
         this.stock -= quantity;
+    }
+
+    public boolean isLowStockAlertSent() {
+        return lowStockAlertSent;
+    }
+
+    public void markLowStockAlertSent() {
+        this.lowStockAlertSent = true;
     }
 
 }

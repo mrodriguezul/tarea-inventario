@@ -67,6 +67,13 @@ public class InventoryServiceImpl implements InventoryService {
         Instant expiresAt = clock.instant().plus(CategoryPolicy.reservationDuration(product.getCategory()));
         Reservation reservation = new Reservation(orderId, sku, quantity, expiresAt);
         reservations.put(orderId, reservation);
+
+        int currentAvailable = available(sku);
+        if (currentAvailable <= 5 && !product.isLowStockAlertSent()) {
+            product.markLowStockAlertSent();
+            alertListener.onLowStock(sku, currentAvailable);
+        }
+
         return reservation;
     }
 
