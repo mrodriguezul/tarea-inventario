@@ -14,7 +14,6 @@ public final class Inventory {
     }
 
     public static InventoryService create(Clock clock, StockAlertListener alertListener) {
-        //throw new UnsupportedOperationException("TODO");
         return new InventoryServiceImpl(clock, alertListener);
     }
 }
