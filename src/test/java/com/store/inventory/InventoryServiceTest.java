@@ -3,10 +3,10 @@ package com.store.inventory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.store.inventory.api.InsufficientStockException;
-import com.store.inventory.api.InventoryService;
-import com.store.inventory.api.ProductCategory;
+import com.store.inventory.api.*;
+
 import java.time.Clock;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,5 +39,20 @@ class InventoryServiceTest {
         service.reserve("ORDER-1", "SKU-1", 2);
         service.confirm("ORDER-1");
         assertEquals(3, service.available("SKU-1"));
+    }
+
+    @Test
+    void flashSaleShouldAllowMaximumTwoUnitsPerOrder() {
+        service.registerProduct("FLASH-1", ProductCategory.FLASH_SALE);
+        service.addStock("FLASH-1", 10);
+        Reservation reservation = service.reserve("ORDER-1", "FLASH-1", 2);
+        assertEquals(2, reservation.quantity());
+    }
+
+    @Test
+    void flashSaleShouldRejectMoreThanTwoUnits() {
+        service.registerProduct("FLASH-1", ProductCategory.FLASH_SALE);
+        service.addStock("FLASH-1", 10);
+        assertThrows(OrderLimitExceededException.class, () -> service.reserve("ORDER-1", "FLASH-1", 3));
     }
 }

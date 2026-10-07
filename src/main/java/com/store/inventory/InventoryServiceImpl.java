@@ -1,10 +1,6 @@
 package com.store.inventory;
 
-import com.store.inventory.api.InventoryService;
-import com.store.inventory.api.InsufficientStockException;
-import com.store.inventory.api.ProductCategory;
-import com.store.inventory.api.Reservation;
-import com.store.inventory.api.StockAlertListener;
+import com.store.inventory.api.*;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -46,6 +42,15 @@ public class InventoryServiceImpl implements InventoryService {
     public Reservation reserve(String orderId, String sku, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
+        }
+
+        Product product = products.get(sku);
+        if (product != null) {
+            var maxUnitsPerOrder = CategoryPolicy.maxUnitsPerOrder(product.getCategory());
+            if (maxUnitsPerOrder.isPresent() && quantity > maxUnitsPerOrder.getAsInt()) {
+                throw new OrderLimitExceededException(
+                        sku, quantity, maxUnitsPerOrder.getAsInt());
+            }
         }
 
         int availableUnits = available(sku);
