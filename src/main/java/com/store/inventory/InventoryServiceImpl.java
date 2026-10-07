@@ -21,6 +21,14 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public synchronized void registerProduct(String sku, ProductCategory category) {
+        Product existing = products.get(sku);
+
+        if (existing != null) {
+            if (existing.getCategory() != category) {
+                throw new IllegalArgumentException("Product already registered with another category: " + sku);
+            }
+            return;
+        }
         products.put(sku, new Product(sku, category, 0));
     }
 

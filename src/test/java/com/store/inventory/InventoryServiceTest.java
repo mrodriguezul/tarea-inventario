@@ -392,4 +392,17 @@ class InventoryServiceTest {
         assertEquals(10, service.available("PRE-1"));
     }
 
+    @Test
+    void registeringSameProductAgainShouldPreserveStock() {
+        service.addStock("SKU-1", 10);
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+
+        assertEquals(10, service.available("SKU-1"));
+    }
+
+    @Test
+    void registeringExistingProductWithDifferentCategoryShouldFail() {
+        assertThrows(IllegalArgumentException.class, () -> service.registerProduct("SKU-1", ProductCategory.FLASH_SALE));
+    }
+
 }
