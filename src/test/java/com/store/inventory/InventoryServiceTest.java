@@ -101,4 +101,62 @@ class InventoryServiceTest {
         clock.advance(Duration.ofMinutes(15));
         assertEquals(10, service.available("SKU-1"));
     }
+
+    @Test
+    void retryingSameOrderShouldNotReserveStockTwice() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        Reservation first = service.reserve("ORDER-1", "SKU-1", 3);
+        Reservation retry = service.reserve("ORDER-1", "SKU-1", 3);
+
+        assertEquals(first, retry);
+        assertEquals(7, service.available("SKU-1"));
+    }
+
+    @Test
+    void retryingSameOrderShouldReturnOriginalReservation() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        Reservation first = service.reserve("ORDER-1", "SKU-1", 3);
+
+        clock.advance(Duration.ofMinutes(5));
+
+        Reservation retry = service.reserve("ORDER-1", "SKU-1", 3);
+
+        assertEquals(first, retry);
+        assertEquals(7, service.available("SKU-1"));
+    }
+
+    @Test
+    void shouldRejectZeroReservationQuantity() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        assertThrows(IllegalArgumentException.class, () -> service.reserve("ORDER-1", "SKU-1", 0)
+        );
+    }
+
+    @Test
+    void shouldRejectNegativeReservationQuantity() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+        service.addStock("SKU-1", 10);
+
+        assertThrows(IllegalArgumentException.class, () -> service.reserve("ORDER-1", "SKU-1", -1));
+    }
+
+    @Test
+    void shouldRejectZeroStockQuantity() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+
+        assertThrows(IllegalArgumentException.class, () -> service.addStock("SKU-1", 0));
+    }
+
+    @Test
+    void shouldRejectNegativeStockQuantity() {
+        service.registerProduct("SKU-1", ProductCategory.STANDARD);
+
+        assertThrows(IllegalArgumentException.class, () -> service.addStock("SKU-1", -1));
+    }
 }

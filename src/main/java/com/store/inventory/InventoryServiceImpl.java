@@ -40,6 +40,12 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public Reservation reserve(String orderId, String sku, int quantity) {
+        removeExpiredReservations();
+        Reservation existingReservation = reservations.get(orderId);
+        if (existingReservation != null) {
+            return existingReservation;
+        }
+
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
